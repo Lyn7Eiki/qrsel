@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F3F5F1" />
+<title>二维码选择器</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" />
+<style>
+  :root {
+    --paper: #F3F5F1;
+    --surface: #FFFFFF;
+    --ink: #1B2420;
+    --ink-soft: #5F6B64;
+    --line: #E2E7E1;
+    --accent: #0E9F6E;
+    --accent-deep: #0B7A55;
+    --accent-soft: #E2F3EB;
+    --shadow: 0 10px 30px rgba(27, 36, 32, .08);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .app {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 22px 16px calc(16px + env(safe-area-inset-bottom));
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== 顶部标题与路径 ===== */
+  .top { margin-bottom: 18px; }
+  .top h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: .01em;
+  }
+  .top h1 strong { font-weight: 700; color: var(--accent-deep); }
+
+  /* ===== 左右下布局：上[左二维码 | 右一级列]，下二级行（所有宽度保持） ===== */
+  .stage {
+    display: grid;
+    gap: 7px;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    grid-template-areas: "qr level1";
+    flex: 0 0 auto;
+  }
+  .qr-panel { grid-area: qr; }
+  .level1 {
+    grid-area: level1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .level2 {
+    margin-top: 16px;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== 二维码卡片（上中下：二维码图 / 标题 / 内容） ===== */
+  .qr-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .qr-frame {
+    position: relative;
+    width: 100%;
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  @media (min-width: 560px) {
+    .qr-frame { padding: 20px; border-radius: 24px; }
+  }
+  /* 二维码图区域 */
+  .qr-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+  }
+  #qrHost { width: 100%; height: 100%; }
+  #qrHost canvas { display: block; width: 100%; height: auto; }
+  /* 二维码内容（中间） */
+  .qr-code-label {
+    margin: 6px 0 0;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  /* 标题（底部） */
+  .qr-title {
+    margin: 14px 0 0;
+    height: 40px;
+    line-height: 40px;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--accent-deep);
+    letter-spacing: .1em;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  @media (min-width: 560px) {
+    .qr-code-label { font-size: 17px; margin-top: 8px; }
+    .qr-title { font-size: 36px; margin-top: 18px; height: 48px; line-height: 48px; }
+  }
+
+  /* ===== 一级选择列（上方右侧，竖排） ===== */
+  .cat-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(14, 159, 110, .45) transparent;
+  }
+  .cat-list::-webkit-scrollbar {
+    width: 2px;
+  }
+  .cat-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .cat-list::-webkit-scrollbar-thumb {
+    background: rgba(14, 159, 110, .45);
+    border-radius: 2px;
+  }
+  .cat-chip {
+    flex: 1 1 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s, transform .08s;
+  }
+  .cat-chip:hover { border-color: var(--accent); color: var(--ink); }
+  .cat-chip:active { transform: translateY(1px); }
+  .cat-chip.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-deep);
+    font-weight: 700;
+  }
+
+  /* ===== 二级选择行（下方通栏，自动换行） ===== */
+  .item-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 10px;
+    max-height: calc(46px * 3 + 10px * 2);
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(14, 159, 110, .45) transparent;
+  }
+  .item-grid::-webkit-scrollbar {
+    width: 2px;
+  }
+  .item-grid::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .item-grid::-webkit-scrollbar-thumb {
+    background: rgba(14, 159, 110, .45);
+    border-radius: 2px;
+  }
+  .item-chip {
+    flex: 0 0 auto;
+    min-height: 46px;
+    max-width: 100%;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: .02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s, transform .08s;
+  }
+  .item-chip:hover { border-color: var(--accent); color: var(--ink); }
+  .item-chip:active { transform: translateY(1px); }
+  .item-chip.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-deep);
+    font-weight: 700;
+  }
+
+  .chip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+<main class="app">
+
+  <!-- ===== 顶部标题 ===== -->
+  <header class="top">
+    <h1><strong>Qr</strong>code <strong>Sel</strong>ector</h1>
+  </header>
+
+  <!-- ===== 上方：左二维码 / 右一级选择列 ===== -->
+  <section class="stage">
+
+    <!-- 二维码卡片（左）：二维码图 / 标题 / 内容 -->
+    <div class="qr-panel">
+      <div class="qr-frame">
+        <div class="qr-image">
+          <div id="qrHost"></div>
+        </div>
+        <div class="qr-code-label" id="codeLabel">D1217</div>
+        <div class="qr-title" id="qrTitle">离心间</div>
+      </div>
+    </div>
+
+    <!-- 一级选择列（右，竖排分类） -->
+    <div class="level1">
+      <div class="cat-list" id="catList"></div>
+    </div>
+  </section>
+
+  <!-- ===== 下方：二级选择行（通栏） ===== -->
+  <section class="level2">
+    <div class="item-grid" id="itemGrid"></div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"></script>
+<script>
+/* ===================== 二维码数据库（硬编码，仅存在于代码中，界面不展示） ===================== */
+var QR_DB = [
+  {
+    category: "房间",
+    items: [
+      { code: "D1217", label: "离心间", title: "离心间" },
+      { code: "D1218", label: "蛋白提取间", title: "蛋白提取间" },
+      { code: "D1219", label: "压滤间", title: "压滤间" },
+      { code: "D1210", label: "试剂配制间", title: "试剂配制间" },
+      { code: "D1216", label: "组分库", title: "组分库" },
+      { code: "D1212", label: "称量间", title: "称量间" }
+    ]
+  },
+  {
+    category: "平衡液罐",
+    items: [
+      { code: "R203-1", title: "平衡液罐" }
+    ]
+  },
+  {
+    category: "反应罐",
+    items: [
+      { code: "R204-1", title: "反应罐" },
+      { code: "R204-2", title: "反应罐" },
+      { code: "R204-3", title: "反应罐" },
+      { code: "R204-4", title: "反应罐" },
+      { code: "R204-5", title: "反应罐" },
+      { code: "R204-6", title: "反应罐" },
+      { code: "R204-7", title: "反应罐" }
+    ]
+  },
+  {
+    category: "缓冲液罐",
+    items: [
+      { code: "V202-1", title: "缓冲液罐" },
+      { code: "V202-2", title: "缓冲液罐" },
+      { code: "V202-3", title: "缓冲液罐" },
+      { code: "V202-4", title: "缓冲液罐" },
+      { code: "V202-5", title: "缓冲液罐" },
+      { code: "V202-6", title: "缓冲液罐" },
+      { code: "V202-7", title: "缓冲液罐" }
+    ]
+  },
+  {
+    category: "缓冲液流量计",
+    items: [
+      { code: "JXY-182", title: "缓冲液流量计" },
+      { code: "JXY-184", title: "缓冲液流量计" },
+      { code: "JXY-186", title: "缓冲液流量计" },
+      { code: "JXY-188", title: "缓冲液流量计" },
+      { code: "JXY-190", title: "缓冲液流量计" },
+      { code: "JXY-220", title: "缓冲液流量计" },
+      { code: "JXY-222", title: "缓冲液流量计" }
+    ]
+  },
+  {
+    category: "酒精流量计",
+    items: [
+      { code: "JXY-221", title: "酒精流量计" },
+      { code: "JXY-183", title: "酒精流量计" },
+      { code: "JXY-185", title: "酒精流量计" },
+      { code: "JXY-187", title: "酒精流量计" },
+      { code: "JXY-189", title: "酒精流量计" },
+      { code: "JXY-191", title: "酒精流量计" },
+      { code: "JXY-223", title: "酒精流量计" }
+    ]
+  },
+  {
+    category: "配液罐",
+    items: [
+      { code: "R201-1", title: "配液罐" },
+      { code: "R201-2", title: "配液罐" },
+      { code: "R202", title: "配液罐" }
+    ]
+  },
+  {
+    category: "离心机",
+    items: [
+      { code: "C201-1", title: "离心机" },
+      { code: "C201-2", title: "离心机" },
+      { code: "C201-3", title: "离心机" },
+      { code: "C201-4", title: "离心机" },
+      { code: "C201-5", title: "离心机" },
+      { code: "C201-6", title: "离心机" },
+      { code: "C201-7", title: "离心机" }
+    ]
+  },
+  {
+    category: "仪器",
+    items: [
+      { code: "XY-H004", label: "澄明度检测仪", title: "澄明度检测仪" },
+      { code: "XY-FC-682", label: "pH计", title: "pH计" },
+      { code: "XY-H199", label: "电导率仪", title: "电导率仪" }
+    ]
+  },
+  {
+    category: "自控系统",
+    items: [
+      { code: "XY-FD-576", title: "蛋白提取自控系统", label: "反应" },
+      { code: "XY-RJ-574", title: "融浆自控系统", label: "融浆" }
+    ]
+  },
+  {
+    category: "CIP系统",
+    items: [
+      { code: "XY-KZ-458", title: "反应CIP系统", label: "反应" },
+      { code: "XY-KZ-457", title: "融浆CIP系统", label: "融浆" }
+    ]
+  }
+];
+
+/* ===================== 状态 ===================== */
+var catIndex = 0;
+var itemIndex = 0;
+/* 二级选择记忆：每个分类记住上次选中的编码下标 */
+var itemSel = {};
+
+function getCat() { return QR_DB[catIndex]; }
+function getItem() {
+  var items = getCat().items;
+  return items[Math.min(itemIndex, items.length - 1)];
+}
+
+/* ===================== DOM 引用 ===================== */
+var catListEl = document.getElementById("catList");
+var itemGridEl = document.getElementById("itemGrid");
+var codeLabelEl = document.getElementById("codeLabel");
+var qrTitleEl = document.getElementById("qrTitle");
+
+/* ===================== 二维码（内容严格等于所选编码） ===================== */
+var qr = new QRCode(document.getElementById("qrHost"), {
+  text: getItem().code,
+  width: 560,
+  height: 560,
+  colorDark: "#1B2420",
+  colorLight: "#FFFFFF",
+  correctLevel: QRCode.CorrectLevel.M
+});
+
+/* ===================== 渲染 ===================== */
+function renderLevel1() {
+  catListEl.innerHTML = "";
+  QR_DB.forEach(function (cat, i) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip cat-chip" + (i === catIndex ? " active" : "");
+    btn.setAttribute("aria-pressed", String(i === catIndex));
+
+    var name = document.createElement("span");
+    name.textContent = cat.category;
+
+    btn.appendChild(name);
+    // 点击时不抢焦点，避免浏览器自动把按钮滚动到视口中央
+    btn.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    btn.addEventListener("click", function () { selectCategory(i); });
+    catListEl.appendChild(btn);
+  });
+}
+
+function renderLevel2() {
+  itemGridEl.innerHTML = "";
+  var items = getCat().items;
+  itemIndex = Math.min(itemIndex, items.length - 1);
+  items.forEach(function (it, i) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip item-chip" + (i === itemIndex ? " active" : "");
+    btn.setAttribute("aria-pressed", String(i === itemIndex));
+    // 按钮显示：优先用自定义 label，否则显示编码
+    btn.textContent = it.label || it.code;
+    btn.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    btn.addEventListener("click", function () { selectItem(i); });
+    itemGridEl.appendChild(btn);
+  });
+}
+
+function renderQR() {
+  var it = getItem();
+  qr.makeCode(it.code);
+  codeLabelEl.textContent = it.code;
+  // 二维码标题：优先用自定义 title；未设置时 = 分类名 + 序号（从 1 开始）
+  qrTitleEl.textContent = it.title || (getCat().category + (itemIndex + 1));
+  fitTitle();
+}
+
+/* 标题过长时自适应缩小字号，保证单行不换行 */
+function fitTitle() {
+  var el = qrTitleEl;
+  el.style.fontSize = "";   // 先回到 CSS 默认字号
+  var size = parseFloat(getComputedStyle(el).fontSize) || 30;
+  var min = 12;
+  el.style.fontSize = size + "px";
+  var guard = 0;
+  while (el.scrollWidth > el.clientWidth + 1 && size > min && guard < 40) {
+    size -= 1;
+    el.style.fontSize = size + "px";
+    guard++;
+  }
+}
+
+/* ===================== 一级列布局：高度对齐二维码卡片，最多显示 4 个，超出滚动 ===================== */
+function layoutLevel1() {
+  var frame = document.querySelector(".qr-frame");
+  var chips = catListEl.children;
+  if (!frame || !chips.length) return;
+  var H = frame.getBoundingClientRect().height;
+  var n = chips.length;
+  var gap = 8;
+  // 将分类列表高度钉死为二维码卡片高度，防止被内容撑高
+  catListEl.style.height = H + "px";
+  if (n > 4) {
+    // 前 4 个恰好填满卡片高度，其余以相同高度滚动显示
+    var h = Math.max(44, Math.floor((H - 3 * gap) / 4));
+    for (var i = 0; i < n; i++) {
+      chips[i].style.flex = "0 0 auto";
+      chips[i].style.height = h + "px";
+    }
+  } else {
+    for (var i = 0; i < n; i++) {
+      chips[i].style.flex = "1 1 0";
+      chips[i].style.height = "";
+    }
+  }
+  layoutScrollbars();
+}
+
+/* 内容溢出时强制显示滚动条（常显，便于发现可滚动） */
+function layoutScrollbars() {
+  catListEl.style.overflowY = (catListEl.scrollHeight > catListEl.clientHeight + 1) ? "scroll" : "auto";
+  itemGridEl.style.overflowY = (itemGridEl.scrollHeight > itemGridEl.clientHeight + 1) ? "scroll" : "auto";
+}
+
+var resizeTimer = null;
+function onResize() {
+  if (resizeTimer) clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function () {
+    layoutLevel1();
+    layoutScrollbars();
+    fitTitle();
+  }, 120);
+}
+
+/* ===================== 选择行为 ===================== */
+function selectCategory(i) {
+  if (i === catIndex) return;
+  itemSel[catIndex] = itemIndex;                       // 记住当前分类的选中项
+  catIndex = i;
+  itemIndex = (itemSel[i] !== undefined) ? itemSel[i] : 0;  // 切回来时恢复记忆
+  // 原地切换选中态，不重建列表，避免滚动位置跳动
+  var chips = catListEl.children;
+  for (var k = 0; k < chips.length; k++) {
+    chips[k].classList.toggle("active", k === i);
+    chips[k].setAttribute("aria-pressed", String(k === i));
+  }
+  renderLevel2();
+  renderQR();
+  layoutLevel1();
+}
+
+function selectItem(i) {
+  itemIndex = i;
+  itemSel[catIndex] = i;   // 记住当前分类的选中项
+  renderLevel2();
+  renderQR();
+  layoutScrollbars();
+}
+
+/* ===================== 首次渲染 ===================== */
+renderLevel1();
+renderLevel2();
+renderQR();
+layoutLevel1();
+window.addEventListener("resize", onResize);
+</script>
+</body>
+</html>
