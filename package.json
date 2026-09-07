@@ -1,0 +1,16 @@
+{
+  "name": "qrsel",
+  "version": "2.0.0",
+  "private": true,
+  "description": "二维码选择器 —— 分类选码，即点即扫。纯 Vanilla JS 静态页面。",
+  "license": "WTFPL",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node tests/roundtrip.cjs"
+  },
+  "devDependencies": {
+    "jsqr": "^1.4.0",
+    "pngjs": "^7.0.0",
+    "qrcode-generator": "^1.4.4"
+  }
+}

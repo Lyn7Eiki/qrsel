@@ -1,0 +1,278 @@
+/* ============================================================
+   二维码选择器 · Qrcode Selector
+   纯 CSS 布局：无 JS 钉高度、无外部字体、支持深色模式
+   ============================================================ */
+
+:root {
+  --paper: #F3F5F1;
+  --card: #FFFFFF;            /* 二维码卡片恒为白，保证扫码环境一致 */
+  --card-ink: #1B2420;        /* 卡片内文字恒为深色（卡片底色不随主题变） */
+  --surface: #FFFFFF;
+  --ink: #1B2420;
+  --ink-soft: #5F6B64;
+  --line: #E2E7E1;
+  --accent: #0E9F6E;
+  --accent-deep: #0B7A55;
+  --accent-soft: #E2F3EB;
+  --scroll-thumb: rgba(14, 159, 110, .45);
+  --shadow: 0 10px 30px rgba(27, 36, 32, .08);
+
+  --gap-stage: 7px;           /* 二维码卡片与一级列间距（规格：7px） */
+  --gap-cat: 8px;
+  --gap-item: 10px;
+  --chip-h: 46px;
+  --radius-card: 20px;
+  --radius-chip: 12px;
+
+  /* 二维码卡片宽度上限：保证卡片 + 标题 + 编码行在中等高度窗口也不超一屏
+     （vh 在前作旧浏览器回退，dvh 在后被现代浏览器采用） */
+  --frame-cap: calc(100vh - 300px);
+  --frame-cap: calc(100dvh - 300px);
+  --accent-ink: var(--accent-deep);  /* 深色背景上的强调文字色（暗色主题提亮） */
+
+  --sans: "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+          "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121613;
+    --surface: #1B211D;
+    --ink: #E8ECE9;
+    --ink-soft: #9AA59E;
+    --line: #2A322D;
+    --accent: #34C48C;
+    --accent-deep: #0B7A55;
+    --accent-soft: #17332A;
+    --accent-ink: #3DDAB4;
+    --scroll-thumb: rgba(110, 231, 183, .4);
+    --shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ===== 整体：一屏自适应 ===== */
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px calc(14px + env(safe-area-inset-bottom));
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== 顶部标题 ===== */
+.top { margin-bottom: 16px; }
+.brand {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: .01em;
+}
+.brand-accent { font-weight: 700; color: var(--accent-ink); }
+
+/* ===== 上方：左卡片 / 右分类列 ===== */
+.stage {
+  flex: 0 0 auto;
+  display: grid;
+  gap: var(--gap-stage);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+
+/* --- 二维码卡片：上（图）中（编码）下（标题） --- */
+.qr-card { min-width: 0; }
+.qr-frame {
+  width: min(100%, var(--frame-cap, 100%));
+  margin-inline: auto;
+  background: var(--card);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.qr-frame canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+.qr-code {
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  line-height: 1;
+  color: var(--card-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qr-title {
+  margin: 14px 0 2px;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  letter-spacing: .1em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* --- 一级分类列 ---
+   绝对定位填满网格行：行高完全由二维码卡片决定，
+   纯 CSS 实现与卡片等高，无需 JS 量高度。 */
+.cat-panel { position: relative; min-width: 0; }
+.cat-list {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-cat);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+/* 分类按钮：≤4 个均分填满；>4 个固定为列表高度的 1/4，
+   超出滚动，一屏恰好约见 4 个（data-multi 由 JS 按数量设置） */
+.cat-chip { flex: 1 1 0; min-height: 44px; }
+.cat-list[data-multi="true"] .cat-chip {
+  flex: 0 0 auto;
+  height: calc((100% - 3 * var(--gap-cat)) / 4);
+}
+
+/* ===== 下方：二级编码行（通栏，最多 3 行，超出滚动） ===== */
+.item-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 16px;
+}
+.item-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: var(--gap-item);
+  max-height: calc(3 * var(--chip-h) + 2 * var(--gap-item));
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.item-chip {
+  flex: 0 0 auto;
+  min-height: var(--chip-h);
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+}
+
+/* ===== 通用按钮（chips） ===== */
+.chip {
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s, transform .08s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cat-chip { width: 100%; }
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+.chip:active { transform: translateY(1px); }
+.chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 编码按钮文本：单行溢出省略 */
+.item-chip {
+  font-family: var(--mono);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== 低调滚动条：细、半透明 ===== */
+.cat-list, .item-grid {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+.cat-list::-webkit-scrollbar, .item-grid::-webkit-scrollbar { width: 2px; }
+.cat-list::-webkit-scrollbar-track, .item-grid::-webkit-scrollbar-track { background: transparent; }
+.cat-list::-webkit-scrollbar-thumb, .item-grid::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 2px;
+}
+
+/* ===== 平板与桌面 ===== */
+@media (min-width: 560px) {
+  .qr-frame { padding: 20px; border-radius: 24px; }
+  .qr-code { font-size: 17px; }
+  .qr-title { font-size: 36px; margin-top: 18px; }
+  .brand { font-size: 24px; }
+}
+
+@media (min-width: 1024px) {
+  .app { max-width: 960px; padding-top: 28px; }
+  /* 桌面优化：二维码不再随列宽无限放大，分类列可显示更多项 */
+  .qr-frame { width: min(100%, 380px, var(--frame-cap, 100%)); }
+  .cat-list:not([data-multi="true"]) { justify-content: flex-start; }
+  .cat-chip {
+    flex: 0 1 auto;
+    max-height: 60px;
+    min-height: 48px;
+    font-size: 16px;
+  }
+  .item-grid { gap: 12px; }
+  .item-chip { min-height: 50px; font-size: 16px; }
+  .item-grid { max-height: calc(3 * 50px + 2 * 12px); }
+}
+
+/* ===== 矮屏（横屏手机 / 矮窗口）：压缩纵向占用，保持一屏 ===== */
+@media (max-height: 600px) {
+  .app { padding-top: 10px; }
+  .top { margin-bottom: 8px; }
+  .brand { font-size: 18px; }
+  .qr-frame {
+    padding: 10px;
+    border-radius: 16px;
+    --frame-cap: calc(100vh - 250px);
+    --frame-cap: calc(100dvh - 250px);
+  }
+  .qr-code { font-size: 14px; margin-top: 4px; }
+  .qr-title { font-size: 22px; margin-top: 8px; }
+  .cat-list { gap: 6px; }
+  .cat-chip { min-height: 36px; font-size: 14px; }
+  .cat-list[data-multi="true"] .cat-chip { height: calc((100% - 3 * 6px) / 4); }
+  .item-panel { margin-top: 10px; }
+  .item-grid { gap: 8px; max-height: calc(2 * 40px + 1 * 8px); }
+  .item-chip { min-height: 40px; font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip { transition: none; }
+}
