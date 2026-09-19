@@ -1,48 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="description" content="二维码选择器：按分类快速选中编码，即点即扫。" />
-<meta name="color-scheme" content="light dark" />
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F5F1" />
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121613" />
-<title>二维码选择器 27</title>
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
-<link rel="stylesheet" href="css/style.css" />
-</head>
-<body>
-<main class="app">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="查看房间、罐体、流量计、仪器及控制系统的设备二维码。" />
+    <title>设备二维码</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='white'/%3E%3Cpath d='M4 4h10v10H4zM18 4h10v10H18zM4 18h10v10H4zM18 18h4v4h-4zM24 24h4v4h-4z' fill='%23000'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="preload" as="image" href="./assets/qrcodes/slide-1.png" />
+    <script defer src="./data/catalog.js"></script>
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <main class="page" aria-label="设备二维码查询">
+      <div class="workspace">
+        <figure class="qr-card" aria-label="当前设备二维码">
+          <div class="qr-picture">
+            <img id="qr-image" src="./assets/qrcodes/slide-1.png" width="470" height="470" alt="离心间 D1217 的二维码" draggable="false" />
+          </div>
+          <figcaption class="qr-caption" aria-live="polite" aria-atomic="true">
+            <span id="equipment-name" class="equipment-name">离心间</span>
+            <span id="equipment-code" class="equipment-code">D1217</span>
+          </figcaption>
+        </figure>
 
-  <!-- ===== 顶部标题 ===== -->
-  <header class="top">
-    <h1 class="brand"><span class="brand-accent">Qr</span>code <span class="brand-accent">Sel</span>ector <strong>27</strong></h1>
-  </header>
+        <fieldset id="equipment-options" class="equipment-options">
+          <legend class="visually-hidden">选择房间</legend>
+        </fieldset>
 
-  <!-- ===== 上方：左二维码卡片 / 右一级分类列 ===== -->
-  <section class="stage">
-    <article class="qr-card" aria-label="二维码">
-      <div class="qr-frame">
-        <canvas id="qrCanvas" aria-label="所选编码对应的二维码"></canvas>
-        <p class="qr-code" id="codeLabel">—</p>
-        <h2 class="qr-title" id="qrTitle">—</h2>
+        <fieldset id="category-options" class="category-options">
+          <legend class="visually-hidden">选择设备分类</legend>
+        </fieldset>
+
+        <noscript><p class="notice">请启用 JavaScript，以切换房间和设备二维码。</p></noscript>
       </div>
-    </article>
-
-    <nav class="cat-panel" aria-label="分类选择">
-      <div class="cat-list" id="catList" role="radiogroup" aria-label="分类" aria-orientation="vertical"></div>
-    </nav>
-  </section>
-
-  <!-- ===== 下方：二级编码行（通栏） ===== -->
-  <section class="item-panel" aria-label="编码选择">
-    <div class="item-grid" id="itemGrid" role="radiogroup" aria-label="编码"></div>
-  </section>
-
-</main>
-
-<script src="js/vendor/qrcode-generator.js" defer></script>
-<script src="js/data.js" defer></script>
-<script src="js/app.js" defer></script>
-</body>
+    </main>
+  </body>
 </html>
